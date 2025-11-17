@@ -52,6 +52,16 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+
+	mQueueName := "army_moves" + "." + uName
+	mRKey := "army_moves.*"
+
+	err = pubsub.SubscribeJSON(rconnect, string(routing.ExchangePerilTopic), mQueueName, mRKey, queueType, handlerMove(gameState))
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
 Loop:
 	for {
 		uInput := gamelogic.GetInput()
@@ -118,10 +128,13 @@ Loop:
 				fmt.Println(err.Error())
 				continue
 			}
-			fmt.Printf("%s moved the following units to %s\n", move.Player.Username, move.ToLocation)
-			for _, unit := range move.Units {
-				fmt.Printf("ID:%d    Type:%s\n", unit.ID, unit.Rank)
+
+			err = pubsub.PublishJSON(newChan, routing.ExchangePerilTopic, mQueueName, move)
+			if err != nil {
+				fmt.Println(err.Error())
+				continue
 			}
+			fmt.Print("The move was successful")
 		case "status":
 			gameState.CommandStatus()
 		case "help":
